@@ -1,3 +1,7 @@
+# terraform-HA-website
+
+A study on creating a highly available website with Terraform scripts, using AWS resources
+
 Study: Building a website based on Wordpress, scalable and with high availability.
 
 Requirements and assumptions:
