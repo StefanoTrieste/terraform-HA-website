@@ -1,0 +1,10 @@
+4/6/2020
+-lock down allowed_ip to the ELB as well as the bastion, to protect first page of wordpress set-up
+-create mechanism to save wordpress config on S3 every 5 mins (or better: upon changes in any file) on writer, and same for readers to pull config folders from S3
+-change autoscaling on readers to increment maximum node limit from 2 to 5 and run a load test to ensure autoscaling occurs. Measure RDS DB load.
+-add pricing information for each resource and each state
+-find an alternative to NAT Gateways to save $$ on running costs (optional)
+-prepare baked AMIs to speed up provisioning within autoscaling groups if needed
+-reader node min=2 to ensure drastically lower downtime on the event of AZ failure
+-modification tf script to manage and modify aspects of implementation once deployed (rather than modifying this setup scripts) 
+SL
