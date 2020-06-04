@@ -1,0 +1,105 @@
+resource "aws_vpc" "my_vpc" {
+  cidr_block       = "10.0.0.0/16"
+  
+  tags = {
+    Name = "vpc_HAW"
+  }
+}
+
+resource "aws_subnet" "public_a" {
+  vpc_id                    = "${aws_vpc.my_vpc.id}"
+  cidr_block                ="10.0.240.0/24"
+  map_public_ip_on_launch   = true
+  availability_zone         = "ap-southeast-2a"
+  tags = {
+    Name                    = "public_a-10.0.240.0"
+  }
+}
+
+resource "aws_subnet" "public_b" {
+  vpc_id                    = "${aws_vpc.my_vpc.id}"
+  cidr_block                ="10.0.241.0/24"
+  map_public_ip_on_launch   = true
+  availability_zone         = "ap-southeast-2b"
+  tags = {
+    Name                    = "public_b-10.0.241.0"
+  }
+}
+
+resource "aws_subnet" "private_a" {
+  vpc_id                    = "${aws_vpc.my_vpc.id}"
+  cidr_block                ="10.0.16.0/20"
+  map_public_ip_on_launch   = false
+  availability_zone         = "ap-southeast-2a"
+  tags = {
+    Name                    = "private_a-10.0.16.0"
+  }
+}
+
+resource "aws_subnet" "private_b" {
+  vpc_id                    = "${aws_vpc.my_vpc.id}"
+  cidr_block                ="10.0.32.0/20"
+  map_public_ip_on_launch   = false
+  availability_zone         = "ap-southeast-2b"
+  tags = {
+    Name                    = "private_b-10.0.32.0"
+  }
+}
+
+//main internet gateway for the custom VPC
+resource "aws_internet_gateway" "gw" {
+  vpc_id = "${aws_vpc.my_vpc.id}"
+
+  tags = {
+   Name = "Internet_gw"
+  }
+}
+
+resource "aws_route" "r" {
+  //adding a route to the default route table, to the internet gw
+  route_table_id  = "${aws_vpc.my_vpc.default_route_table_id}"
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id = "${aws_internet_gateway.gw.id}"
+}
+
+//setting up a redundant NAT gateway for the two availability_zones
+
+resource "aws_eip" "sub_a" {
+}
+
+resource "aws_eip" "sub_b" {
+}
+
+resource "aws_nat_gateway" "nat_gw_a" {
+  allocation_id = "${aws_eip.sub_a.id}"
+  subnet_id     = "${aws_subnet.public_a.id}"
+}
+
+resource "aws_nat_gateway" "nat_gw_b" {
+  allocation_id = "${aws_eip.sub_b.id}"
+  subnet_id     = "${aws_subnet.public_b.id}"
+}
+//new route table pointing to the NAT gateway
+resource "aws_route_table" "rta" {
+ vpc_id = "${aws_vpc.my_vpc.id}"
+ route {
+   cidr_block = "0.0.0.0/0"
+   gateway_id = "${aws_nat_gateway.nat_gw_a.id}"
+ }
+}
+resource "aws_route_table" "rtb" {
+  vpc_id = "${aws_vpc.my_vpc.id}"
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = "${aws_nat_gateway.nat_gw_b.id}"
+  } 
+}
+//associate the two private subnets with the route table pointing to the NAT gateway
+resource "aws_route_table_association" "rta" {
+  subnet_id       = "${aws_subnet.private_a.id}"
+  route_table_id  = "${aws_route_table.rta.id}"
+}
+resource "aws_route_table_association" "rtb" {
+  subnet_id       = "${aws_subnet.private_b.id}"
+  route_table_id  = "${aws_route_table.rtb.id}"
+}
